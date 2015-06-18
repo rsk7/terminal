@@ -25,13 +25,7 @@ var setup = function() {
     input.addEventListener("keypress", function(e) {
         if(event.which == 13) {
             event.preventDefault();
-            var lineInput = input.value;
-            var split = input.value.split(/\s+/);
-            var command = split.shift();
-            socket.emit("input", {
-                command: command,
-                args: split
-            });
+            socket.emit("input", input.value);
         }
     });
 };
