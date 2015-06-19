@@ -1,0 +1,25 @@
+body {
+    font-family: "Lucida Console", Monaco, monospace;
+}
+
+#output {
+    padding: 30px;
+}
+
+#status {
+    padding: 30px;
+}
+
+.connected {
+    color: green;
+}
+
+.disconnected {
+    color: red;
+}
+
+input {
+    margin: none;
+    border: none;
+    padding: 5px;
+}

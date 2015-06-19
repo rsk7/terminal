@@ -1,9 +1,15 @@
 <html>
     <head>
+        <script src="jquery.js"></script>
         <script src="/socket.io/socket.io.js"></script>
         <script src="terminal.js"></script>
+        <link rel="stylesheet" type="text/css" href="styles.css">
     </head>
     <body>
-        <input type="text" id="messager"/>
+        <div id="status"></div>
+        <div id="output">
+            <span id="stdout"></span>
+            <input type="text" id="messager" placeholder="next command ..."/>
+        </div>
     </body>
 </html>
