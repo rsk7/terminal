@@ -7,17 +7,19 @@ var spawn = require("child_process").spawn;
 var emit = false;
 var storeUntilConnect = "";
 
-var result = function(type) {
-    return function(data) {
-        if(emit) io.emit(type, data.toString());
-        else storeUntilConnect += data;
-    };
+var stdoutListener = function(data) {
+    if(emit) io.emit("stdout", data.toString());
+    else storeUntilConnect += data;
+};
+
+var closeListener = function(data) {
+    io.emit("close", data.toString());
 };
 
 var cmd = spawn("cmd");
-cmd.stdout.on("data", result("stdout"));
-cmd.stderr.on("data", result("stderr"));
-cmd.on("close", result("close"));
+cmd.stdout.on("data", stdoutListener);
+// cmd.stderr.on("data", result("stderr"));
+cmd.on("close", closeListener);
 
 app.use(express.static(__dirname + "/public"));
 
@@ -37,6 +39,34 @@ io.on("connection", function(socket) {
 
     socket.on("input", function(command) {
         cmd.stdin.write(command + "\n");
+    });
+
+    socket.on("tab", function(tabRequest) {
+
+        // removing stdout listener
+        cmd.stdout.removeListener("data", stdoutListener);
+
+        var tabRequestListener = function(data) {
+            console.log(data.toString());
+            var contentOutput = data.toString();
+            var splitContents = contentOutput.split("\n");
+            var list = splitContents.map(function(line) {
+                return line.split(/\s/).slice(-1)[0];
+            });
+            io.emit("tabcomplete", list);
+
+            // swapping out stdout listener
+            if(data.toString() !== "ls -al\n") {
+                cmd.stdout.removeListener("data", tabRequestListener);
+                cmd.stdout.on("data", stdoutListener);
+            }
+        };
+
+        // adding tab request listener
+        cmd.stdout.on("data", tabRequestListener);
+
+        // get list of contents
+        cmd.stdin.write("ls -al\n");
     });
 });
 

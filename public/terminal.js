@@ -29,6 +29,13 @@ var handleClearCommand = function(value) {
 };
 
 $(function(){
+    $("#messager").on("keydown", function(e) {
+        if(e.which === 9) {
+            e.preventDefault();
+            socket.emit("tab", e.target.value);
+        }
+    });
+
     $("#messager").on("keypress", function(e) {
         if(e.which === 13) {
             e.preventDefault();
@@ -46,6 +53,11 @@ $(function(){
         $("#stdout").append("<br/><br/>");
     });
 
+    socket.on("tabcomplete", function(message) {
+        console.log(message);
+    });
+
+    
     socket.on("stdout", output);
     socket.on("stderr", output);
 
