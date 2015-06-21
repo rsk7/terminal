@@ -15,6 +15,12 @@ var output = function(message) {
     window.scrollTo(0, document.body.scrollHeight);
 };
 
+var err = function(message) {
+    var errOut = $("<span/>").addClass("error").text(format(htmlEncode(message)));
+    $("#stdout").append(errOut);
+    window.scrollTo(0, document.body.scrollHeight);
+};
+
 var send = function(value) {
     socket.emit("input", value);
 };
@@ -53,17 +59,41 @@ $(function(){
         $("#stdout").append("<br/><br/>");
     });
 
+    var dir = "";
+    var tabList = [];
+    var tabResult;
+    var inputToComplete;
+
+    socket.on("dir", function(data) {
+        dir = data.toString();
+    });
+
     socket.on("tabcomplete", function(message) {
-        console.log(message);
+        var tabList = message.trim().split(/\s+/);
+        var currentInput = $("#messager").val();
+        if(currentInput !== tabResult) {
+            inputToComplete = currentInput.trim().split(/\s+/).slice(-1)[0];
+        }
+        
+        if(inputToComplete.length) {
+            var candidates = tabList.filter(function(item) {
+                return item.indexOf(inputToComplete) === 0;
+            }).filter(function(item) {
+                return !tabResult || item !== tabResult.trim().split(/\s+/).slice(-1)[0];
+            });
+
+            if(candidates.length) {
+                var updatedInput = currentInput.trim().split(/\s+/).slice(0, -1).join(" ");
+                updatedInput += " " + candidates[0];
+                tabResult = updatedInput;
+                $("#messager").val(updatedInput);
+            }
+        }
     });
 
-    
     socket.on("stdout", output);
-    socket.on("stderr", output);
-
-    socket.on("close", function(message) {
-        output("exit code " + message + "\n");
-    });
+    socket.on("stderr", err);
+    socket.on("close", output);
 
     socket.on("disconnect", function() {
         $("#status").html("disconnected")

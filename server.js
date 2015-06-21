@@ -12,13 +12,17 @@ var stdoutListener = function(data) {
     else storeUntilConnect += data;
 };
 
+var stderrListener = function(data) {
+    io.emit("stderr", data.toString());
+};
+
 var closeListener = function(data) {
     io.emit("close", data.toString());
 };
 
 var cmd = spawn("cmd");
 cmd.stdout.on("data", stdoutListener);
-// cmd.stderr.on("data", result("stderr"));
+cmd.stderr.on("data", closeListener);
 cmd.on("close", closeListener);
 
 app.use(express.static(__dirname + "/public"));
@@ -27,7 +31,7 @@ app.get("/", function(req, res) {
     res.sendfile('index.html');
 });
 
-var port = 7777;
+var port = process.argv[2] || 7777;
 
 http.listen(port, function() {
     console.log("listening on " + port);
@@ -47,16 +51,27 @@ io.on("connection", function(socket) {
         cmd.stdout.removeListener("data", stdoutListener);
 
         var tabRequestListener = function(data) {
-            console.log(data.toString());
-            var contentOutput = data.toString();
-            var splitContents = contentOutput.split("\n");
-            var list = splitContents.map(function(line) {
-                return line.split(/\s/).slice(-1)[0];
-            });
-            io.emit("tabcomplete", list);
+            var stringData = data.toString();
+
+            var isLsCommand = function(str) { 
+                return str === "ls -a\n";
+            };
+
+            var isPrompt = function(str) { 
+                return stringData.indexOf(":") > 0 &&
+                    stringData.indexOf(">") > 0;
+            };
+
+            if(isPrompt(stringData)) {
+                io.emit("dir", stringData);
+            } else if (!isLsCommand(stringData)) {
+                io.emit("tabcomplete", stringData);
+            }
 
             // swapping out stdout listener
-            if(data.toString() !== "ls -al\n") {
+            // waiting for prompt. need to figure out a better way for 
+            // this whole tab complete thing.
+            if(isPrompt(stringData)) {
                 cmd.stdout.removeListener("data", tabRequestListener);
                 cmd.stdout.on("data", stdoutListener);
             }
@@ -66,7 +81,7 @@ io.on("connection", function(socket) {
         cmd.stdout.on("data", tabRequestListener);
 
         // get list of contents
-        cmd.stdin.write("ls -al\n");
+        cmd.stdin.write("ls -a\n");
     });
 });
 
