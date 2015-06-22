@@ -16,7 +16,7 @@ var output = function(message) {
 };
 
 var err = function(message) {
-    var errOut = $("<span/>").addClass("error").text(format(htmlEncode(message)));
+    var errOut = $("<span/>").addClass("error").html(format(htmlEncode(message)));
     $("#stdout").append(errOut);
     window.scrollTo(0, document.body.scrollHeight);
 };
