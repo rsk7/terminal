@@ -30,7 +30,7 @@ var input = function(socket) {
 };
 
 var tab = function(socket, cmd, stdoutListenerRef) {
-    var tabListener = requrie("./tablistener.js");
+    var tabListener = require("./tablistener.js");
     socket.on("tab", tabListener(socket, cmd, stdoutListenerRef));
 };
 

@@ -34,71 +34,80 @@ var handleClearCommand = function(value) {
     send("");
 };
 
-$(function(){
-    $("#messager").on("keydown", function(e) {
-        if(e.which === 9) {
-            e.preventDefault();
-            socket.emit("tab", e.target.value);
-        }
-    });
+var handleTabDown = function(e) {
+    if(e.which === 9) {
+        e.preventDefault();
+        socket.emit("tab", e.target.value);
+    }
+};
 
-    $("#messager").on("keypress", function(e) {
-        if(e.which === 13) {
-            e.preventDefault();
-            var command = e.target.value;
-            if(isClearCommand(command)) handleClearCommand(command);
-            else send(command);
-            e.target.value = "";
-        }
-    });
+var handleEnter = function(e) {
+    if(e.which === 13) {
+        e.preventDefault();
+        var command = e.target.value;
+        if(isClearCommand(command)) handleClearCommand(command);
+        else send(command);
+        e.target.value = "";
+    }
+};
 
-    socket.on("connect", function() {
-        $("#status").html("connected")
-            .removeClass("disconnected")
-            .addClass("connected");
-        $("#stdout").append("<br/><br/>");
-    });
+var connectHandler = function() {
+    $("#status").html("connected")
+        .removeClass("disconnected")
+        .addClass("connected");
+    $("#stdout").append("<br/><br/>");
+};
 
-    var dir = "";
-    var tabList = [];
+var disconnectHandler = function() {
+    $("#status").html("disconnected")
+        .removeClass("connected")
+        .addClass("disconnected");
+};
+
+// trim and split on spaces
+var trsp = function(str) {
+    return str.trim().split(/\s+/);
+};
+
+var getCandidates = function(input, list, lastResult) {
+    return list.filter(function(item) {
+        return item.indexOf(input) === 0;
+    }).filter(function(item) {
+        return !lastResult ||
+            item !== trsp(lastResult).slice(-1)[0];
+    });
+};
+
+var tabComplete = function(input, list, lastResult) {
+    var candidates = getCandidates(input, list, lastResult);
+    if(input.length && candidates.length) return candidates[0];
+};
+
+var tabHandlerProvider = function() {
     var tabResult;
     var inputToComplete;
-
-    socket.on("dir", function(data) {
-        dir = data.toString();
-    });
-
-    socket.on("tabcomplete", function(message) {
+    return function(message) {
         var tabList = message.trim().split(/\s+/);
         var currentInput = $("#messager").val();
-        if(currentInput !== tabResult) {
-            inputToComplete = currentInput.trim().split(/\s+/).slice(-1)[0];
+        inputToComplete = (currentInput !== tabResult) ?
+            trsp(currentInput).slice(-1)[0] :
+            inputToComplete;
+        var result = tabComplete(inputToComplete, tabList, tabResult);
+        if(result) {
+            tabResult = trsp(currentInput).slice(0, -1).join(" ") + " " + result;
+            $("#messager").val(tabResult);
         }
-        
-        if(inputToComplete.length) {
-            var candidates = tabList.filter(function(item) {
-                return item.indexOf(inputToComplete) === 0;
-            }).filter(function(item) {
-                return !tabResult || item !== tabResult.trim().split(/\s+/).slice(-1)[0];
-            });
+    };
+};
 
-            if(candidates.length) {
-                var updatedInput = currentInput.trim().split(/\s+/).slice(0, -1).join(" ");
-                updatedInput += " " + candidates[0];
-                tabResult = updatedInput;
-                $("#messager").val(updatedInput);
-            }
-        }
-    });
-
+$(function(){
+    $("#messager").on("keydown", handleTabDown);
+    $("#messager").on("keypress", handleEnter);
+    socket.on("connect", connectHandler);
+    socket.on("tabcomplete", tabHandlerProvider());
     socket.on("stdout", output);
     socket.on("stderr", err);
     socket.on("close", output);
-
-    socket.on("disconnect", function() {
-        $("#status").html("disconnected")
-            .removeClass("connected")
-            .addClass("disconnected");
-    });
+    socket.on("disconnect", disconnectHandler);
 });
 
